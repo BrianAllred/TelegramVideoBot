@@ -77,7 +77,7 @@ namespace TelegramVideoBot.Workers
                     var videoFileInfo = new FileInfo(filePath);
                     if (videoFileInfo.Length > 50 * 1000 * 1000)
                     {
-                        await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait.", ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
+                        await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait\\.", ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
                         CompressVideo(filePath);
                     }
 
