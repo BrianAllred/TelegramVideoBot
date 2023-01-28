@@ -4,6 +4,7 @@ using System.Text;
 using FFMpegCore;
 using FFMpegCore.Arguments;
 using FFMpegCore.Enums;
+using FFMpegCore.Exceptions;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 using static TelegramVideoBot.Utilities.Enums;
@@ -30,7 +31,7 @@ namespace TelegramVideoBot.Workers
 
             downloads.Enqueue(download);
 
-            new Action(async () => { await StartDownloads(); })();
+            _ = Task.Run(() => StartDownloads());
 
             return DownloadQueueStatus.Success;
         }
@@ -76,7 +77,7 @@ namespace TelegramVideoBot.Workers
                     var videoFileInfo = new FileInfo(filePath);
                     if (videoFileInfo.Length > 50 * 1000 * 1000)
                     {
-                        await client.SendTextMessageAsync(download.ChatId, $"Video {download.VideoUrl} is larger than 50MB and requires further compression, please wait.", replyToMessageId: download.ReplyId);
+                        await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait.", ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
                         CompressVideo(filePath);
                     }
 
@@ -100,23 +101,58 @@ namespace TelegramVideoBot.Workers
         {
             var newFilePath = $"{Path.GetFileNameWithoutExtension(filePath)}_new{Path.GetExtension(filePath)}";
 
-            var targetSizeInKiloBits = 50 * 1000 * 8; // 50MB target size
+            var targetSizeInKiloBits = 45 * 1000 * 8; // 45MB target size, API limit is 50
             var mediaInfo = FFProbe.Analyse(filePath);
             var totalBitRate = (targetSizeInKiloBits / mediaInfo.Duration.TotalSeconds) + 1;
             var audioBitRate = 128;
             var videoBitRate = (int)(totalBitRate - audioBitRate);
 
-            FFMpegArguments.FromFileInput(filePath, false, options => options
-            .WithHardwareAcceleration(HardwareAccelerationDevice.Auto))
-            .OutputToFile(newFilePath, false, options => options
-            .WithVideoBitrate(videoBitRate)
-            .WithAudioBitrate(audioBitRate)
-            .WithArgument(new CustomArgument($"-maxrate:v {videoBitRate}k"))
-            .WithArgument(new CustomArgument($"-bufsize:v {targetSizeInKiloBits * 1000 / 20}"))
-            .WithFastStart())
-            .ProcessSynchronously();
+            Transcode(filePath, newFilePath, targetSizeInKiloBits, audioBitRate, videoBitRate);
 
             File.Move(newFilePath, filePath, true);
+        }
+
+        // Recurse through all the hardware accelerated transcode options until we find one that works.
+        // If none do, then default to non-accelerated transcoding.
+        private static void Transcode(string filePath, string newFilePath, int targetSizeInKiloBits, int audioBitRate, int videoBitRate, HardwareAccelerationDevice hardwareAccelerationDevice = HardwareAccelerationDevice.Auto)
+        {
+            try
+            {
+                if (File.Exists(newFilePath))
+                {
+                    File.Delete(newFilePath);
+                }
+
+                FFMpegArguments.FromFileInput(filePath, false, options => options
+                            .WithHardwareAcceleration(hardwareAccelerationDevice))
+                            .OutputToFile(newFilePath, false, options => options
+                            .WithVideoBitrate(videoBitRate)
+                            .WithAudioBitrate(audioBitRate)
+                            .WithArgument(new CustomArgument($"-maxrate:v {videoBitRate}k"))
+                            .WithArgument(new CustomArgument($"-bufsize:v {targetSizeInKiloBits * 1000 / 20}"))
+                            .WithFastStart())
+                            .ProcessSynchronously();
+            }
+            catch (FFMpegException ex)
+            {
+                Console.WriteLine(ex);
+
+                if (hardwareAccelerationDevice != HardwareAccelerationDevice.LibMFX)
+                {
+                    Transcode(filePath, newFilePath, targetSizeInKiloBits, audioBitRate, videoBitRate, hardwareAccelerationDevice + 1);
+                }
+                else
+                {
+                    FFMpegArguments.FromFileInput(filePath, false)
+                            .OutputToFile(newFilePath, false, options => options
+                            .WithVideoBitrate(videoBitRate)
+                            .WithAudioBitrate(audioBitRate)
+                            .WithArgument(new CustomArgument($"-maxrate:v {videoBitRate}k"))
+                            .WithArgument(new CustomArgument($"-bufsize:v {targetSizeInKiloBits * 1000 / 20}"))
+                            .WithFastStart())
+                            .ProcessSynchronously();
+                }
+            }
         }
     }
 }
