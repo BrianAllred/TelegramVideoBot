@@ -37,13 +37,17 @@ namespace TelegramVideoBot.Workers
             var splitMessage = messageText.Split(Array.Empty<char>(), StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (splitMessage.Length < 1) return;
 
+            if (splitMessage[0].StartsWith("/download"))
+            {
+                await HandleDownload(message);
+                return;
+            }
+
             if (splitMessage[0].StartsWith('/'))
             {
                 await HandleHelp(message);
                 return;
             }
-
-            await HandleDownload(message);
         }
 
         private async Task HandleDownload(Message message)
@@ -55,10 +59,15 @@ namespace TelegramVideoBot.Workers
 
             var downloadUrls = messageText.Split(Array.Empty<char>(), StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            if (downloadUrls.Length < 1)
+            if (downloadUrls.Length == 0 || (downloadUrls.Length == 1 && downloadUrls[0] == "/download"))
             {
                 await client.SendTextMessageAsync(message.Chat.Id, "No URL included in message.", replyToMessageId: message.MessageId);
                 return;
+            }
+
+            if (downloadUrls[0] == "/download")
+            {
+                downloadUrls = downloadUrls[1..];
             }
 
             if (!downloadManagers.TryGetValue(userId, out var manager))
