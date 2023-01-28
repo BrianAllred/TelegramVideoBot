@@ -17,7 +17,8 @@
       "applicationUrl": "https://localhost:7234;http://localhost:5059",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "TG_BOT_TOKEN": "5612230731:AAHYtHbPZYBsO_1FHIefM-KPnFJMG3RMw10"
+        "TG_BOT_TOKEN": "",
+        "TG_BOT_NAME": "Test Video Bot"
       }
     },
     "IIS Express": {
