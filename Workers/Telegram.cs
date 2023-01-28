@@ -134,7 +134,7 @@ namespace TelegramVideoBot.Workers
             replyBuilder.AppendLine();
             replyBuilder.AppendLine("Please note that the Telegram API limits me to 50 MB attachments per message, so long videos may take longer to process due to compression\\. *Please be patient\\!*");
             replyBuilder.AppendLine();
-            replyBuilder.AppendLine("To get started, send a message with a URL to a video, and I'll do my best\\!");
+            replyBuilder.AppendLine("To get started, send a message starting with `/download` followed by a URL to a video, and I'll do my best\\!");
 
             try
             {
