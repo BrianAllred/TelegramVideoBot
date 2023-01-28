@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Text;
 using FFMpegCore;
 using FFMpegCore.Arguments;
-using FFMpegCore.Enums;
 using FFMpegCore.Exceptions;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;

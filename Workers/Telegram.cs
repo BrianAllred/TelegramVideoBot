@@ -1,10 +1,8 @@
-using System.Runtime.CompilerServices;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.Payments;
 using TelegramVideoBot.Utilities;
 
 namespace TelegramVideoBot.Workers
