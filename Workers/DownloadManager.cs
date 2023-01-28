@@ -107,7 +107,7 @@ namespace TelegramVideoBot.Workers
             var videoBitRate = (int)(totalBitRate - audioBitRate);
 
             FFMpegArguments.FromFileInput(filePath, false, options => options
-            .WithHardwareAcceleration(HardwareAccelerationDevice.VAAPI))
+            .WithHardwareAcceleration(HardwareAccelerationDevice.Auto))
             .OutputToFile(newFilePath, false, options => options
             .WithVideoBitrate(videoBitRate)
             .WithAudioBitrate(audioBitRate)
