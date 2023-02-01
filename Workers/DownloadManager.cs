@@ -17,6 +17,8 @@ namespace TelegramVideoBot.Workers
         private readonly TelegramBotClient client;
         private readonly int queueLimit;
 
+        private bool downloading;
+
         public DownloadManager(TelegramBotClient client, long userId, int queueLimit)
         {
             this.userId = userId;
@@ -39,10 +41,13 @@ namespace TelegramVideoBot.Workers
 
         private async Task StartDownloads()
         {
+            if (downloading) return;
+
             while (downloads.TryDequeue(out var download))
             {
                 try
                 {
+                    downloading = true;
                     var filePath = Directory.GetFiles("./").Where(file => file.StartsWith($"./{userId}")).FirstOrDefault();
                     filePath = filePath?[2..] ?? "";
                     if (File.Exists(filePath))
@@ -93,6 +98,10 @@ namespace TelegramVideoBot.Workers
                     replyBuilder.AppendLine("If that's not the problem, contact [my creator](tg://user?id=247371329) for more help\\.");
                     await client.SendTextMessageAsync(download.ChatId, replyBuilder.ToString(), ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
                     Console.WriteLine(ex);
+                }
+                finally
+                {
+                    downloading = false;
                 }
             }
         }
