@@ -11,32 +11,45 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
       - name: Setup .NET Core SDK 6.0.x
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 6.0.x
+
       - name: Install dependencies
         run: dotnet restore
+
       - name: Build dotnet release
         run: dotnet publish -c Release
+
       - name: Zip dotnet release
         run: zip release-${{ github.ref_name }}-dotnet.zip bin/Release/net6.0/publish/*
+
       - name: Build linux x64
         run: dotnet publish -c Release -r linux-x64 --self-contained
+
       - name: Zip linux-64 release
         run: zip release-${{ github.ref_name }}-linux-gnu.zip bin/Release/net6.0/linux-x64/publish/*
+
       - name: Build linux musl
         run: dotnet publish -c Release -r linux-musl-x64 --self-contained
+
       - name: Zip linux-musl-x64 release
         run: zip release-${{ github.ref_name }}-linux-musl.zip bin/Release/net6.0/linux-musl-x64/publish/*
+
       - name: Build win x64
         run: dotnet publish -c Release -r win-x64 --self-contained
+
       - name: Zip win-x64 release
         run: zip release-${{ github.ref_name }}-win.zip bin/Release/net6.0/win-x64/publish/*
+
       - name: Build osx x64
         run: dotnet publish -c Release -r osx-x64 --self-contained
+
       - name: Zip osx-x64 release
         run: zip release-${{ github.ref_name }}-osx-x64.zip bin/Release/net6.0/osx-x64/publish/*
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
