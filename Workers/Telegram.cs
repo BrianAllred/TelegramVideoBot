@@ -147,7 +147,7 @@ namespace TelegramVideoBot.Workers
                 Console.WriteLine(ex);
             }
 
-            replyBuilder = new StringBuilder($"Also, you can queue up to {queueLimit} videos at a time. You can do this by sending multiple messages or alternatively sending multiple video links within the same message separated by line breaks or spaces.");
+            replyBuilder = new StringBuilder($"Also, each user can queue up to {queueLimit} videos at a time. You can do this by sending multiple messages or alternatively sending multiple video links within the same message separated by line breaks or spaces.");
 
             try
             {
