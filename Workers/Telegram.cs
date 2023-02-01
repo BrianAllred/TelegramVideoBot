@@ -48,6 +48,8 @@ namespace TelegramVideoBot.Workers
                 await HandleHelp(message);
                 return;
             }
+
+            await HandleDownload(message);
         }
 
         private async Task HandleDownload(Message message)
