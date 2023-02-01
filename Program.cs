@@ -15,7 +15,6 @@ internal class Program
         // Add services to the container.
 
         builder.Services.AddControllers();
-        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSingleton(config);
         builder.Services.AddHostedService<TelegramVideoBot.Workers.Telegram>();
