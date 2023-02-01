@@ -1,12 +1,11 @@
 using Telegram.Bot.Types;
 
-namespace TelegramVideoBot.Utilities
+namespace TelegramVideoBot.Utilities;
+
+public static class Extensions
 {
-    public static class Extensions
+    public static long SenderUserId(this Message message)
     {
-        public static long SenderUserId(this Message message)
-        {
-            return message.From?.Id ?? -1;
-        }
+        return message.From?.Id ?? -1;
     }
 }

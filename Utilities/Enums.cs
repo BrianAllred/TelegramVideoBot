@@ -1,13 +1,12 @@
-namespace TelegramVideoBot.Utilities
+namespace TelegramVideoBot.Utilities;
+
+public static class Enums
 {
-    public static class Enums
+    public enum DownloadQueueStatus
     {
-        public enum DownloadQueueStatus
-        {
-            Success,
-            QueueFull,
-            InvalidUrl,
-            UnknownError
-        }
+        Success,
+        QueueFull,
+        InvalidUrl,
+        UnknownError
     }
 }

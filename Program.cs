@@ -1,3 +1,5 @@
+using Telegram.Bot;
+using TelegramVideoBot.Services;
 using TelegramVideoBot.Utilities;
 using TelegramVideoBot.Workers;
 
@@ -17,7 +19,16 @@ internal class Program
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSingleton(config);
-        builder.Services.AddHostedService<TelegramVideoBot.Workers.Telegram>();
+        builder.Services.AddHttpClient("telegram_bot_client")
+            .AddTypedClient<ITelegramBotClient>((httpClient, sp) =>
+            {
+                var options = new TelegramBotClientOptions(config.TelegramBotToken);
+                return new TelegramBotClient(options, httpClient);
+            });
+
+        builder.Services.AddScoped<UpdateHandler>();
+        builder.Services.AddScoped<ReceiverService>();
+        builder.Services.AddHostedService<PollingService>();
 
         var app = builder.Build();
 
