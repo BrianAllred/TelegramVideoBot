@@ -13,6 +13,7 @@ namespace TelegramVideoBot.Workers
         private readonly TelegramBotClient client;
         private readonly QueuedUpdateReceiver updateReceiver;
         private readonly string botName;
+        private readonly int queueLimit;
 
         private bool _started;
 
@@ -25,6 +26,7 @@ namespace TelegramVideoBot.Workers
 
             updateReceiver = new QueuedUpdateReceiver(client);
             botName = config.TelegramBotName ?? "Frozen's Video Bot";
+            queueLimit = config.DownloadQueueLimit;
         }
 
         private async Task HandleUpdateAsync(ITelegramBotClient _, Update update)
@@ -70,7 +72,7 @@ namespace TelegramVideoBot.Workers
 
             if (!downloadManagers.TryGetValue(userId, out var manager))
             {
-                manager = new(client, userId);
+                manager = new(client, userId, queueLimit);
                 downloadManagers.Add(userId, manager);
             }
 

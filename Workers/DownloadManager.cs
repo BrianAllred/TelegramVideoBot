@@ -15,16 +15,18 @@ namespace TelegramVideoBot.Workers
         private readonly ConcurrentQueue<DownloadInfo> downloads = new();
         private readonly long userId;
         private readonly TelegramBotClient client;
+        private readonly int queueLimit;
 
-        public DownloadManager(TelegramBotClient client, long userId)
+        public DownloadManager(TelegramBotClient client, long userId, int queueLimit)
         {
             this.userId = userId;
             this.client = client;
+            this.queueLimit = queueLimit;
         }
 
         public DownloadQueueStatus QueueDownload(DownloadInfo download)
         {
-            if (downloads.Count >= 5) return DownloadQueueStatus.QueueFull;
+            if (downloads.Count >= queueLimit) return DownloadQueueStatus.QueueFull;
 
             if (!Uri.TryCreate(download.VideoUrl, UriKind.Absolute, out var uriResult) || !(uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps)) return DownloadQueueStatus.InvalidUrl;
 
