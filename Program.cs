@@ -9,9 +9,6 @@ internal class Program
     {
         var config = new EnvironmentConfig();
 
-        if (config.UpdateYtDlpOnStart)
-            YtDlp.Update();
-
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
@@ -19,6 +16,7 @@ internal class Program
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSingleton(config);
+        builder.Services.AddSingleton<YtDlp>();
         builder.Services.AddHttpClient("telegram_bot_client")
             .AddTypedClient<ITelegramBotClient>((httpClient, sp) =>
             {
@@ -31,6 +29,8 @@ internal class Program
         builder.Services.AddHostedService<PollingService>();
 
         var app = builder.Build();
+
+        app.Services.GetRequiredService<YtDlp>();
 
         app.UseHttpsRedirection();
 

@@ -17,14 +17,16 @@ public class DownloadManager
     private readonly long userId;
     private readonly ITelegramBotClient client;
     private readonly int queueLimit;
+    private readonly ILogger logger;
 
     private bool downloading;
 
-    public DownloadManager(ITelegramBotClient client, long userId, int queueLimit)
+    public DownloadManager(ITelegramBotClient client, long userId, int queueLimit, ILogger logger)
     {
         this.userId = userId;
         this.client = client;
         this.queueLimit = queueLimit;
+        this.logger = logger;
     }
 
     public DownloadQueueStatus QueueDownload(DownloadInfo download)
@@ -71,12 +73,12 @@ public class DownloadManager
                 downloadProc.ErrorDataReceived += (sender, o) =>
                 {
                     output += o.Data;
-                    Console.WriteLine(output);
+                    logger.LogError(o.Data);
                 };
                 downloadProc.OutputDataReceived += (sender, o) =>
                 {
                     output += o.Data;
-                    Console.WriteLine(output);
+                    logger.LogInformation(o.Data);
                 };
 
                 downloadProc.Start();
@@ -119,7 +121,7 @@ public class DownloadManager
                 var replyBuilder = new StringBuilder($"Sorry, something went wrong downloading `{download.VideoUrl}`\\. I can't \\(currently\\!\\) access private videos, so please make sure it's available to the public\\.\n\n");
                 replyBuilder.AppendLine("If that's not the problem, contact [my creator](tg://user?id=247371329) for more help\\.");
                 await client.SendTextMessageAsync(download.ChatId, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
-                Console.WriteLine(ex);
+                logger.LogError(ex, ex.Message);
             }
             finally
             {
@@ -129,7 +131,7 @@ public class DownloadManager
     }
 
     // https://unix.stackexchange.com/questions/520597/how-to-reduce-the-size-of-a-video-to-a-target-size
-    private static void CompressVideo(string filePath)
+    private void CompressVideo(string filePath)
     {
         var newFilePath = $"{Path.GetFileNameWithoutExtension(filePath)}_new{Path.GetExtension(filePath)}";
 
@@ -154,13 +156,13 @@ public class DownloadManager
                         .WithArgument(new CustomArgument($"-maxrate:v {videoBitRate}k"))
                         .WithArgument(new CustomArgument($"-bufsize:v {targetSizeInKiloBits * 1000 / 20}"))
                         .WithFastStart())
-                        .NotifyOnError((err) => { Console.WriteLine(err); })
-                        .NotifyOnOutput((output) => { Console.WriteLine(output); })
+                        .NotifyOnError((err) => { logger.LogError(err); })
+                        .NotifyOnOutput((output) => { logger.LogInformation(output); })
                         .ProcessSynchronously();
         }
         catch (FFMpegException ex)
         {
-            Console.WriteLine(ex);
+            logger.LogError(ex, ex.Message);
         }
 
         System.IO.File.Move(newFilePath, filePath, true);

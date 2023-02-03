@@ -12,11 +12,13 @@ public class UpdateHandler : IUpdateHandler
     private readonly Dictionary<long, DownloadManager> downloadManagers = new();
     private readonly string botName;
     private readonly int queueLimit;
+    private readonly ILogger<UpdateHandler> logger;
 
-    public UpdateHandler(EnvironmentConfig config)
+    public UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logger)
     {
         botName = config.TelegramBotName ?? "Frozen's Video Bot";
         queueLimit = config.DownloadQueueLimit;
+        this.logger = logger;
     }
 
     public async Task HandleUpdateAsync(ITelegramBotClient client, Update update, CancellationToken cancellationToken = new())
@@ -44,7 +46,7 @@ public class UpdateHandler : IUpdateHandler
 
     public async Task HandlePollingErrorAsync(ITelegramBotClient client, Exception ex, CancellationToken cancellationToken = new())
     {
-        Console.WriteLine(ex);
+        logger.LogError(ex, ex.Message);
         await Task.CompletedTask;
     }
 
@@ -70,7 +72,7 @@ public class UpdateHandler : IUpdateHandler
 
         if (!downloadManagers.TryGetValue(userId, out var manager))
         {
-            manager = new(client, userId, queueLimit);
+            manager = new(client, userId, queueLimit, logger);
             downloadManagers.Add(userId, manager);
         }
 
@@ -142,7 +144,7 @@ public class UpdateHandler : IUpdateHandler
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            logger.LogError(ex, ex.Message);
         }
 
         replyBuilder = new StringBuilder($"Also, each user can queue up to {queueLimit} videos at a time. You can do this by sending multiple messages or alternatively sending multiple video links within the same message separated by line breaks or spaces.");
@@ -153,7 +155,7 @@ public class UpdateHandler : IUpdateHandler
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            logger.LogError(ex, ex.Message);
         }
     }
 }

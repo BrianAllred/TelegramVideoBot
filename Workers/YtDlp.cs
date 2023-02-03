@@ -1,27 +1,31 @@
 using System.Diagnostics;
+using TelegramVideoBot.Utilities;
 
 namespace TelegramVideoBot.Workers;
 
-public static class YtDlp
+public class YtDlp
 {
-    public static void Update()
+    public YtDlp(EnvironmentConfig config, ILogger<YtDlp> logger)
     {
-        var updateStartInfo = new ProcessStartInfo("python3")
+        if (config.UpdateYtDlpOnStart)
         {
-            Arguments = "-m pip install --upgrade git+https://github.com/yt-dlp/yt-dlp.git@release",
-            RedirectStandardError = true,
-            RedirectStandardOutput = true
-        };
+            var updateStartInfo = new ProcessStartInfo("python3")
+            {
+                Arguments = "-m pip install --upgrade git+https://github.com/yt-dlp/yt-dlp.git@release",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            };
 
-        var updateProcess = new Process { StartInfo = updateStartInfo };
+            var updateProcess = new Process { StartInfo = updateStartInfo };
 
-        updateProcess.OutputDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
-        updateProcess.ErrorDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
+            updateProcess.OutputDataReceived += (sender, args) => { logger.LogInformation(args.Data); };
+            updateProcess.ErrorDataReceived += (sender, args) => { logger.LogError(args.Data); };
 
-        updateProcess.Start();
-        updateProcess.BeginErrorReadLine();
-        updateProcess.BeginOutputReadLine();
+            updateProcess.Start();
+            updateProcess.BeginErrorReadLine();
+            updateProcess.BeginOutputReadLine();
 
-        updateProcess.WaitForExit();
+            updateProcess.WaitForExit();
+        }
     }
 }
