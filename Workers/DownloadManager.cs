@@ -56,7 +56,7 @@ public class DownloadManager
 
                 var downloadProcInfo = new ProcessStartInfo("yt-dlp")
                 {
-                    Arguments = $"-f webm/mp4/mkv -S +size -o {userId}.%(ext)s {download.VideoUrl}",
+                    Arguments = $"-f webm+bestaudio/mp4+bestaudio/mkv+bestaudio -S +size -o {userId}.%(ext)s {download.VideoUrl}",
                     RedirectStandardError = true,
                     RedirectStandardOutput = true
                 };
@@ -67,9 +67,22 @@ public class DownloadManager
                     EnableRaisingEvents = true
                 };
 
+                var output = string.Empty;
+                downloadProc.ErrorDataReceived += (sender, o) =>
+                {
+                    output += o.Data;
+                    Console.WriteLine(output);
+                };
+                downloadProc.OutputDataReceived += (sender, o) =>
+                {
+                    output += o.Data;
+                    Console.WriteLine(output);
+                };
+
                 downloadProc.Start();
-                downloadProc.WaitForExit();
-                var output = downloadProc.StandardOutput.ReadToEnd() + "\n" + downloadProc.StandardError.ReadToEnd();
+                downloadProc.BeginErrorReadLine();
+                downloadProc.BeginOutputReadLine();
+                await downloadProc.WaitForExitAsync();
 
                 if (output.Contains("Unsupported URL"))
                 {
