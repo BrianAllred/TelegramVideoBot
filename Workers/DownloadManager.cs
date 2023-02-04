@@ -58,7 +58,7 @@ public class DownloadManager
 
                 var downloadProcInfo = new ProcessStartInfo("yt-dlp")
                 {
-                    Arguments = $"-f webm+bestaudio/mp4+bestaudio/mkv+bestaudio -S +size -o {userId}.%(ext)s {download.VideoUrl}",
+                    Arguments = $"-f \"bv*+ba/b\" -S \"+size\" -o {userId}.%(ext)s {download.VideoUrl}",
                     RedirectStandardError = true,
                     RedirectStandardOutput = true
                 };
