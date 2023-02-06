@@ -149,7 +149,7 @@ public class DownloadManager
             }
 
             FFMpegArguments.FromFileInput(filePath, false, options => options
-                        .WithArgument(new CustomArgument("-hwaccel auto")))
+                        .WithHardwareAcceleration())
                         .OutputToFile(newFilePath, false, options => options
                         .WithVideoBitrate(videoBitRate)
                         .WithAudioBitrate(audioBitRate)
