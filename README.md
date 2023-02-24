@@ -22,7 +22,7 @@ Uses YT-DLP and FFMpeg under the hood. Supports hardware acceleration, but it wi
 version: '3.8'
 
 services:
-  plex:
+  video-bot:
     image: brianallred/telegram-video-bot
     container_name: tg-video-bot
     environment:
