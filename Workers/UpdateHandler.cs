@@ -52,21 +52,24 @@ public class UpdateHandler : IUpdateHandler
 
     private async Task HandleDownload(ITelegramBotClient client, Message message, CancellationToken cancellationToken = new())
     {
-        long userId = message.SenderUserId();
+        var userId = message.SenderUserId();
         if (userId == 0) return;
+
+        var betterQuality = false;
 
         if (message.Text is not { } messageText) return;
 
         var downloadUrls = messageText.Split(Array.Empty<char>(), StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        if (downloadUrls.Length == 0 || (downloadUrls.Length == 1 && downloadUrls[0] == "/download"))
+        if (downloadUrls.Length == 0 || (downloadUrls.Length == 1 && downloadUrls[0].StartsWith("/download")))
         {
             await client.SendTextMessageAsync(message.Chat.Id, "No URL included in message.", replyToMessageId: message.MessageId, cancellationToken: cancellationToken);
             return;
         }
 
-        if (downloadUrls[0] == "/download")
+        if (downloadUrls[0].StartsWith("/download"))
         {
+            betterQuality = downloadUrls[0].ToLower() == "/downloadquality";
             downloadUrls = downloadUrls[1..];
         }
 
@@ -86,7 +89,8 @@ public class UpdateHandler : IUpdateHandler
                 {
                     ChatId = message.Chat.Id,
                     ReplyId = message.MessageId,
-                    VideoUrl = url
+                    VideoUrl = url,
+                    BetterQuality = betterQuality
                 }));
             }
         }
@@ -124,7 +128,7 @@ public class UpdateHandler : IUpdateHandler
 
         await client.SendTextMessageAsync(message.Chat.Id, replyBuilder.ToString(), replyToMessageId: message.MessageId, parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
     }
-
+    
     private async Task HandleHelp(ITelegramBotClient client, Message message, CancellationToken cancellationToken = new())
     {
         if (message.Text is not { } messageText) return;
@@ -136,7 +140,9 @@ public class UpdateHandler : IUpdateHandler
         replyBuilder.AppendLine();
         replyBuilder.AppendLine("To get started, send a message starting with `/download` followed by a URL to a video, and I'll do my best\\!");
         replyBuilder.AppendLine();
-        replyBuilder.AppendLine("\\(I also work without the `/download` command in case you want to use a video app's share feature\\!\\)");
+        replyBuilder.AppendLine("If a certain website or service delivers absurdly small/tiny videos, feel free to attempt to use `/downloadQuality` to get a better version\\. *Note* that the previous caveats about limits and processing apply\\.");
+        replyBuilder.AppendLine();
+        replyBuilder.AppendLine("\\(I also work without the `/download` command in case you want to use a video app's share feature to send me a video URL directly\\!\\)");
 
         try
         {
