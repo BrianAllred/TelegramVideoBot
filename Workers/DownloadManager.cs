@@ -103,6 +103,13 @@ public class DownloadManager
                 {
                     await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait\\.", parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
                     CompressVideo(filePath);
+                    filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
+                }
+                else if(videoFileInfo.Extension != ".mp4") // This is an "else" because the compression above will set the correct extension
+                {
+                    await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` must be transcoded, please wait\\.", parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
+                    CompressVideo(filePath);
+                    filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
                 }
 
                 using var videoStream = System.IO.File.OpenRead(filePath);
@@ -114,7 +121,8 @@ public class DownloadManager
                 else
                 {
                     var inputFile = new InputFile(videoStream);
-                    await client.SendVideoAsync(download.ChatId, inputFile, replyToMessageId: download.ReplyId);
+                    var analysis = await FFProbe.AnalyseAsync(filePath);
+                    await client.SendVideoAsync(download.ChatId, inputFile, replyToMessageId: download.ReplyId, height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
                     System.IO.File.Delete(filePath);
                 }
             }
@@ -135,7 +143,7 @@ public class DownloadManager
     // https://unix.stackexchange.com/questions/520597/how-to-reduce-the-size-of-a-video-to-a-target-size
     private void CompressVideo(string filePath)
     {
-        var newFilePath = $"{Path.GetFileNameWithoutExtension(filePath)}_new{Path.GetExtension(filePath)}";
+        var newFilePath = $"{Path.GetFileNameWithoutExtension(filePath)}_new.mp4";
 
         var targetSizeInKiloBits = 45 * 1000 * 8; // 45MB target size, API limit is 50
         var mediaInfo = FFProbe.Analyse(filePath);
@@ -165,6 +173,12 @@ public class DownloadManager
         catch (FFMpegException ex)
         {
             logger.LogError(ex, ex.Message);
+        }
+
+        if(Path.GetExtension(filePath) != ".mp4")
+        {
+            System.IO.File.Delete(filePath);
+            filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
         }
 
         System.IO.File.Move(newFilePath, filePath, true);
