@@ -118,7 +118,7 @@ public class DownloadManager
                 }
                 else
                 {
-                    var inputFile = new InputFile(videoStream);
+                    var inputFile = InputFile.FromStream(videoStream);
                     var analysis = await FFProbe.AnalyseAsync(filePath);
                     await client.SendVideoAsync(download.ChatId, inputFile, replyToMessageId: download.ReplyId, height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
                     System.IO.File.Delete(filePath);
