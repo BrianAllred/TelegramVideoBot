@@ -55,8 +55,6 @@ public class UpdateHandler : IUpdateHandler
         var userId = message.SenderUserId();
         if (userId == 0) return;
 
-        var betterQuality = false;
-
         if (message.Text is not { } messageText) return;
 
         var downloadUrls = messageText.Split(Array.Empty<char>(), StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -69,7 +67,6 @@ public class UpdateHandler : IUpdateHandler
 
         if (downloadUrls[0].StartsWith("/download"))
         {
-            betterQuality = downloadUrls[0].ToLower() == "/downloadquality";
             downloadUrls = downloadUrls[1..];
         }
 
@@ -89,8 +86,7 @@ public class UpdateHandler : IUpdateHandler
                 {
                     ChatId = message.Chat.Id,
                     ReplyId = message.MessageId,
-                    VideoUrl = url,
-                    BetterQuality = betterQuality
+                    VideoUrl = url
                 }));
             }
         }
@@ -139,8 +135,6 @@ public class UpdateHandler : IUpdateHandler
         replyBuilder.AppendLine("Please note that the Telegram API limits me to 50 MB attachments per message, so long videos may take longer to process due to compression\\. *Please be patient\\!*");
         replyBuilder.AppendLine();
         replyBuilder.AppendLine("To get started, send a message starting with `/download` followed by a URL to a video, and I'll do my best\\!");
-        replyBuilder.AppendLine();
-        replyBuilder.AppendLine("If a certain website or service delivers absurdly small/tiny videos, feel free to attempt to use `/downloadQuality` to get a better version\\. *Note* that the previous caveats about limits and processing apply\\.");
         replyBuilder.AppendLine();
         replyBuilder.AppendLine("\\(I also work without the `/download` command in case you want to use a video app's share feature to send me a video URL directly\\!\\)");
 

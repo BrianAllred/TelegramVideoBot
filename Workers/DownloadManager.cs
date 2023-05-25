@@ -56,11 +56,9 @@ public class DownloadManager
                 if (System.IO.File.Exists(filePath))
                     System.IO.File.Delete(filePath);
 
-                var sizeSort = download.BetterQuality ? string.Empty : "-S \"+size\"";
-
                 var downloadProcInfo = new ProcessStartInfo("yt-dlp")
                 {
-                    Arguments = $"-f \"bv*+ba/b\" {sizeSort} -o {userId}.%(ext)s {download.VideoUrl}",
+                    Arguments = $"-f \"bv*+ba/b\" -S \"filesize~50M\" -o {userId}.%(ext)s {download.VideoUrl}",
                     RedirectStandardError = true,
                     RedirectStandardOutput = true
                 };
