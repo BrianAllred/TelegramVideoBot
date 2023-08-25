@@ -10,5 +10,5 @@ WORKDIR /app
 COPY --from=build /app .
 RUN apt-get update -y
 RUN apt-get install -y python3-pip git aspnetcore-runtime-6.0
-RUN python3 -m pip install --upgrade git+https://github.com/yt-dlp/yt-dlp.git@release
+RUN python3 -m pip install --force-reinstall git+https://github.com/yt-dlp/yt-dlp.git@release
 ENTRYPOINT [ "dotnet", "TelegramVideoBot.dll" ]
