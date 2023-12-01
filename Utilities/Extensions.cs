@@ -4,8 +4,5 @@ namespace TelegramVideoBot.Utilities;
 
 public static class Extensions
 {
-    public static long SenderUserId(this Message message)
-    {
-        return message.From?.Id ?? -1;
-    }
+    public static long SenderUserId(this Message message) => message.From?.Id ?? -1;
 }

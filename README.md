@@ -13,7 +13,7 @@ Uses YT-DLP and FFMpeg under the hood. Supports hardware acceleration, but it wi
 - `TG_BOT_TOKEN`: Bot token obtained from Botfather. Required.
 - `TG_BOT_NAME`: Name used in `/help` and `/start` command text. Optional, defaults to `Frozen's Video Bot`.
 - `UPDATE_YTDLP_ON_START`: Update the local installation of YT-DLP on start. Optional, defaults to false. Highly recommended in container deployments.
-- `YTDLP_UPDATE_BRANCH`: The code branch to use when YT-DLP updates on start (if `UPDATE_YTDLP_ON_START` is true). Optional, defaults to `release`. 
+- `YTDLP_UPDATE_BRANCH`: The code branch to use when YT-DLP updates on start (if `UPDATE_YTDLP_ON_START` is true). Optional, defaults to `release`.
 - `DOWNLOAD_QUEUE_LIMIT`: Number of videos allowed in each user's download queue. Optional, defaults to 5.
 - `TZ`: Timezone. Optional, defaults to UTC.
 

@@ -2,10 +2,6 @@ using TelegramVideoBot.Abstract;
 
 namespace TelegramVideoBot.Services;
 
-public class PollingService : PollingServiceBase<ReceiverService>
+public class PollingService(IServiceProvider serviceProvider, ILogger<PollingService> logger) : PollingServiceBase<ReceiverService>(serviceProvider, logger)
 {
-    public PollingService(IServiceProvider serviceProvider, ILogger<PollingService> logger)
-        : base(serviceProvider, logger)
-    {
-    }
 }

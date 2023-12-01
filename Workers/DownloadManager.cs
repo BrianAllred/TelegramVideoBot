@@ -11,23 +11,15 @@ using static TelegramVideoBot.Utilities.Enums;
 
 namespace TelegramVideoBot.Workers;
 
-public class DownloadManager
+public class DownloadManager(ITelegramBotClient client, long userId, int queueLimit, ILogger logger)
 {
     private readonly ConcurrentQueue<DownloadInfo> downloads = new();
-    private readonly long userId;
-    private readonly ITelegramBotClient client;
-    private readonly int queueLimit;
-    private readonly ILogger logger;
+    private readonly long userId = userId;
+    private readonly ITelegramBotClient client = client;
+    private readonly int queueLimit = queueLimit;
+    private readonly ILogger logger = logger;
 
     private bool downloading;
-
-    public DownloadManager(ITelegramBotClient client, long userId, int queueLimit, ILogger logger)
-    {
-        this.userId = userId;
-        this.client = client;
-        this.queueLimit = queueLimit;
-        this.logger = logger;
-    }
 
     public DownloadQueueStatus QueueDownload(DownloadInfo download)
     {
@@ -103,7 +95,7 @@ public class DownloadManager
                     CompressVideo(filePath);
                     filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
                 }
-                else if(videoFileInfo.Extension != ".mp4") // This is an "else" because the compression above will set the correct extension
+                else if (videoFileInfo.Extension != ".mp4") // This is an "else" because the compression above will set the correct extension
                 {
                     await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` must be transcoded, please wait\\.", parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
                     CompressVideo(filePath);
@@ -173,7 +165,7 @@ public class DownloadManager
             logger.LogError(ex, ex.Message);
         }
 
-        if(Path.GetExtension(filePath) != ".mp4")
+        if (Path.GetExtension(filePath) != ".mp4")
         {
             System.IO.File.Delete(filePath);
             filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";

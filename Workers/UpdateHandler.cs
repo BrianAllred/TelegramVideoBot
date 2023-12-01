@@ -7,19 +7,12 @@ using TelegramVideoBot.Utilities;
 
 namespace TelegramVideoBot.Workers;
 
-public class UpdateHandler : IUpdateHandler
+public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logger) : IUpdateHandler
 {
     private readonly Dictionary<long, DownloadManager> downloadManagers = new();
-    private readonly string botName;
-    private readonly int queueLimit;
-    private readonly ILogger<UpdateHandler> logger;
-
-    public UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logger)
-    {
-        botName = config.TelegramBotName ?? "Frozen's Video Bot";
-        queueLimit = config.DownloadQueueLimit;
-        this.logger = logger;
-    }
+    private readonly string botName = config.TelegramBotName ?? "Frozen's Video Bot";
+    private readonly int queueLimit = config.DownloadQueueLimit;
+    private readonly ILogger<UpdateHandler> logger = logger;
 
     public async Task HandleUpdateAsync(ITelegramBotClient client, Update update, CancellationToken cancellationToken = new())
     {
@@ -124,7 +117,7 @@ public class UpdateHandler : IUpdateHandler
 
         await client.SendTextMessageAsync(message.Chat.Id, replyBuilder.ToString(), replyToMessageId: message.MessageId, parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
     }
-    
+
     private async Task HandleHelp(ITelegramBotClient client, Message message, CancellationToken cancellationToken = new())
     {
         if (message.Text is not { } messageText) return;

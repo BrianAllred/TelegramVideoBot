@@ -4,13 +4,9 @@ using TelegramVideoBot.Workers;
 
 namespace TelegramVideoBot.Services;
 
-public class ReceiverService : ReceiverServiceBase<UpdateHandler>
+public class ReceiverService(
+    ITelegramBotClient botClient,
+    UpdateHandler updateHandler,
+    ILogger<ReceiverServiceBase<UpdateHandler>> logger) : ReceiverServiceBase<UpdateHandler>(botClient, updateHandler, logger)
 {
-    public ReceiverService(
-        ITelegramBotClient botClient,
-        UpdateHandler updateHandler,
-        ILogger<ReceiverServiceBase<UpdateHandler>> logger)
-        : base(botClient, updateHandler, logger)
-    {
-    }
 }
