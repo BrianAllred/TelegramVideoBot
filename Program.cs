@@ -20,7 +20,7 @@ internal class Program
         builder.Services.AddHttpClient("telegram_bot_client")
             .AddTypedClient<ITelegramBotClient>((httpClient, sp) =>
             {
-                var options = new TelegramBotClientOptions(config.TelegramBotToken);
+                var options = new TelegramBotClientOptions(config.TelegramBotToken, config.TelegramApiServer);
                 return new TelegramBotClient(options, httpClient);
             });
 

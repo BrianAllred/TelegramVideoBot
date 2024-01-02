@@ -11,13 +11,14 @@ using static TelegramVideoBot.Utilities.Enums;
 
 namespace TelegramVideoBot.Workers;
 
-public class DownloadManager(ITelegramBotClient client, long userId, int queueLimit, ILogger logger)
+public class DownloadManager(ITelegramBotClient client, long userId, int queueLimit, int fileSizeLimit, ILogger logger)
 {
     private readonly ConcurrentQueue<DownloadInfo> downloads = new();
     private readonly long userId = userId;
     private readonly ITelegramBotClient client = client;
     private readonly int queueLimit = queueLimit;
     private readonly ILogger logger = logger;
+    private readonly int fileSizeLimit = fileSizeLimit;
 
     private bool downloading;
 
@@ -89,7 +90,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                 filePath = Directory.GetFiles("./").Where(file => file.StartsWith($"./{userId}")).First()[2..];
 
                 var videoFileInfo = new FileInfo(filePath);
-                if (videoFileInfo.Length > 50 * 1000 * 1000)
+                if (videoFileInfo.Length > fileSizeLimit * 1000 * 1000)
                 {
                     await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait\\.", parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
                     CompressVideo(filePath);
@@ -135,7 +136,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
     {
         var newFilePath = $"{Path.GetFileNameWithoutExtension(filePath)}_new.mp4";
 
-        var targetSizeInKiloBits = 45 * 1000 * 8; // 45MB target size, API limit is 50
+        var targetSizeInKiloBits = (fileSizeLimit - 5) * 1000 * 8;
         var mediaInfo = FFProbe.Analyse(filePath);
         var totalBitRate = (targetSizeInKiloBits / mediaInfo.Duration.TotalSeconds) + 1;
         var audioBitRate = 128;
