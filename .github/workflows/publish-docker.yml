@@ -30,7 +30,7 @@ jobs:
           images: brianallred/telegram-video-bot
 
       - name: Build and push default Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
