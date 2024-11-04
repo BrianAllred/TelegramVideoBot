@@ -54,7 +54,7 @@ public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logg
 
         if (downloadUrls.Length == 0 || (downloadUrls.Length == 1 && downloadUrls[0].StartsWith("/download")))
         {
-            await client.SendTextMessageAsync(message.Chat.Id, "No URL included in message.", replyToMessageId: message.MessageId, cancellationToken: cancellationToken);
+            await client.SendMessage(message.Chat.Id, "No URL included in message.", replyParameters: message.MessageId, cancellationToken: cancellationToken);
             return;
         }
 
@@ -115,7 +115,7 @@ public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logg
             replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.UnknownError).Select(pair => $"`{pair.Key}`"));
         }
 
-        await client.SendTextMessageAsync(message.Chat.Id, replyBuilder.ToString(), replyToMessageId: message.MessageId, parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+        await client.SendMessage(message.Chat.Id, replyBuilder.ToString(), replyParameters: message.MessageId, parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
     }
 
     private async Task HandleHelp(ITelegramBotClient client, Message message, CancellationToken cancellationToken = new())
@@ -133,7 +133,7 @@ public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logg
 
         try
         {
-            await client.SendTextMessageAsync(message.Chat.Id, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+            await client.SendMessage(message.Chat.Id, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -144,11 +144,20 @@ public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logg
 
         try
         {
-            await client.SendTextMessageAsync(message.Chat.Id, replyBuilder.ToString(), cancellationToken: cancellationToken);
+            await client.SendMessage(message.Chat.Id, replyBuilder.ToString(), cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, ex.Message);
         }
+    }
+
+    public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
+    {
+        if (source is HandleErrorSource.HandleUpdateError) throw exception;
+
+        logger.LogError(exception, exception.Message);
+
+        await Task.CompletedTask;
     }
 }

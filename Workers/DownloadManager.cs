@@ -83,7 +83,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                 {
                     var replyBuilder = new StringBuilder("Failed to find video, are you sure this website/format is supported?\n\n");
                     replyBuilder.AppendLine("Please check the list of supported sites [here](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)\\.");
-                    await client.SendTextMessageAsync(download.ChatId, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
+                    await client.SendMessage(download.ChatId, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, replyParameters: download.ReplyId);
                     continue;
                 }
 
@@ -92,13 +92,13 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                 var videoFileInfo = new FileInfo(filePath);
                 if (videoFileInfo.Length > fileSizeLimit * 1000 * 1000)
                 {
-                    await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait\\.", parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
+                    await client.SendMessage(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait\\.", parseMode: ParseMode.MarkdownV2, replyParameters: download.ReplyId);
                     CompressVideo(filePath);
                     filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
                 }
                 else if (videoFileInfo.Extension != ".mp4") // This is an "else" because the compression above will set the correct extension
                 {
-                    await client.SendTextMessageAsync(download.ChatId, $"Video `{download.VideoUrl}` must be transcoded, please wait\\.", parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
+                    await client.SendMessage(download.ChatId, $"Video `{download.VideoUrl}` must be transcoded, please wait\\.", parseMode: ParseMode.MarkdownV2, replyParameters: download.ReplyId);
                     CompressVideo(filePath);
                     filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
                 }
@@ -113,7 +113,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                 {
                     var inputFile = InputFile.FromStream(videoStream);
                     var analysis = await FFProbe.AnalyseAsync(filePath);
-                    await client.SendVideoAsync(download.ChatId, inputFile, replyToMessageId: download.ReplyId, height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
+                    await client.SendVideo(download.ChatId, inputFile, replyParameters: download.ReplyId, height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
                     System.IO.File.Delete(filePath);
                 }
             }
@@ -121,7 +121,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
             {
                 var replyBuilder = new StringBuilder($"Sorry, something went wrong downloading `{download.VideoUrl}`\\. I can't \\(currently\\!\\) access private videos, so please make sure it's available to the public\\.\n\n");
                 replyBuilder.AppendLine("If that's not the problem, contact [my creator](tg://user?id=247371329) for more help\\.");
-                await client.SendTextMessageAsync(download.ChatId, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, replyToMessageId: download.ReplyId);
+                await client.SendMessage(download.ChatId, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, replyParameters: download.ReplyId);
                 logger.LogError(ex, ex.Message);
             }
             finally

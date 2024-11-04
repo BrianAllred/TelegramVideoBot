@@ -31,11 +31,12 @@ public abstract class ReceiverServiceBase<TUpdateHandler> : IReceiverService
         // ToDo: we can inject ReceiverOptions through IOptions container
         var receiverOptions = new ReceiverOptions()
         {
-            AllowedUpdates = Array.Empty<UpdateType>(),
-            ThrowPendingUpdates = true,
+            AllowedUpdates = [],
         };
 
-        var me = await _botClient.GetMeAsync(stoppingToken);
+        await _botClient.DropPendingUpdates(cancellationToken: stoppingToken);
+
+        var me = await _botClient.GetMe(stoppingToken);
         _logger.LogInformation("Start receiving updates for {BotName}", me.Username ?? "My Awesome Bot");
 
         // Start receiving updates
