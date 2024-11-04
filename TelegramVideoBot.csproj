@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="FFMpegCore" Version="5.1.0" />
     <PackageReference Include="Telegram.Bot" Version="22.0.0" />
-    <PackageReference Include="GitVersion.MsBuild" Version="6.0.3">
+    <PackageReference Include="GitVersion.MsBuild" Version="6.0.4">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
