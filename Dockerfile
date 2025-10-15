@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0.304 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0.306 AS build
 WORKDIR /src
 COPY TelegramVideoBot.csproj .
 RUN dotnet restore
