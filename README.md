@@ -6,6 +6,8 @@ Telegram bot that facilitates downloading videos from various websites and servi
 
 Uses YT-DLP and FFMpeg under the hood. Supports hardware acceleration, but it will fall back to software transcoding.
 
+A dependency has been added on [Deno](https://deno.com/) (or similar EJS) as per the [YT-DLP documentation](https://github.com/yt-dlp/yt-dlp/wiki/EJS). The Telegram Video Bot Docker image handles this dependency automatically.
+
 ## Usage
 
 ### Environment Variables

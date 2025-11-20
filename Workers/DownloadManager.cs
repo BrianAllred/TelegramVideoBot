@@ -52,7 +52,9 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
 
                 var downloadProcInfo = new ProcessStartInfo("yt-dlp")
                 {
-                    Arguments = $"-f \"bv*+ba/b\" -S \"filesize~50M\" -o {userId}.%(ext)s {download.VideoUrl}",
+                    // adding remote-components here as per https://github.com/yt-dlp/yt-dlp/wiki/EJS
+                    // NOTE that this adds a dependency on deno or similar EJS runtime
+                    Arguments = $"-f \"bv*+ba/b\" -S \"filesize~50M\" --remote-components ejs:github -o {userId}.%(ext)s {download.VideoUrl}",
                     RedirectStandardError = true,
                     RedirectStandardOutput = true
                 };
