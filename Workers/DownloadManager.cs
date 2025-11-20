@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using FFMpegCore;
 using FFMpegCore.Arguments;
+using FFMpegCore.Enums;
 using FFMpegCore.Exceptions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -46,8 +47,8 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                 downloading = true;
                 var filePath = Directory.GetFiles("./").Where(file => file.StartsWith($"./{userId}")).FirstOrDefault();
                 filePath = filePath?[2..] ?? "";
-                if (System.IO.File.Exists(filePath))
-                    System.IO.File.Delete(filePath);
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
 
                 var downloadProcInfo = new ProcessStartInfo("yt-dlp")
                 {
@@ -90,20 +91,15 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                 filePath = Directory.GetFiles("./").Where(file => file.StartsWith($"./{userId}")).First()[2..];
 
                 var videoFileInfo = new FileInfo(filePath);
-                if (videoFileInfo.Length > fileSizeLimit * 1000 * 1000)
-                {
-                    await client.SendMessage(download.ChatId, $"Video `{download.VideoUrl}` is larger than 50MB and requires further compression, please wait\\.", parseMode: ParseMode.MarkdownV2, replyParameters: download.ReplyId);
-                    CompressVideo(filePath);
-                    filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
-                }
-                else if (videoFileInfo.Extension != ".mp4") // This is an "else" because the compression above will set the correct extension
+
+                if (NeedTranscode(videoFileInfo))
                 {
                     await client.SendMessage(download.ChatId, $"Video `{download.VideoUrl}` must be transcoded, please wait\\.", parseMode: ParseMode.MarkdownV2, replyParameters: download.ReplyId);
-                    CompressVideo(filePath);
+                    TranscodeVideo(filePath);
                     filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
                 }
 
-                using var videoStream = System.IO.File.OpenRead(filePath);
+                using var videoStream = File.OpenRead(filePath);
 
                 if (videoStream == null)
                 {
@@ -114,7 +110,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                     var inputFile = InputFile.FromStream(videoStream);
                     var analysis = await FFProbe.AnalyseAsync(filePath);
                     await client.SendVideo(download.ChatId, inputFile, replyParameters: download.ReplyId, height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
-                    System.IO.File.Delete(filePath);
+                    File.Delete(filePath);
                 }
             }
             catch (Exception ex)
@@ -132,7 +128,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
     }
 
     // https://unix.stackexchange.com/questions/520597/how-to-reduce-the-size-of-a-video-to-a-target-size
-    private void CompressVideo(string filePath)
+    private void TranscodeVideo(string filePath)
     {
         var newFilePath = $"{Path.GetFileNameWithoutExtension(filePath)}_new.mp4";
 
@@ -144,16 +140,16 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
 
         try
         {
-            if (System.IO.File.Exists(newFilePath))
+            if (File.Exists(newFilePath))
             {
-                System.IO.File.Delete(newFilePath);
+                File.Delete(newFilePath);
             }
 
             FFMpegArguments.FromFileInput(filePath, false, options => options
                         .WithHardwareAcceleration())
                         .OutputToFile(newFilePath, false, options => options
-                        .WithVideoBitrate(videoBitRate)
-                        .WithAudioBitrate(audioBitRate)
+                        .WithVideoCodec(VideoCodec.LibX264)
+                        .WithAudioCodec(AudioCodec.Aac)
                         .WithArgument(new CustomArgument($"-maxrate:v {videoBitRate}k"))
                         .WithArgument(new CustomArgument($"-bufsize:v {targetSizeInKiloBits * 1000 / 20}"))
                         .WithFastStart())
@@ -168,10 +164,27 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
 
         if (Path.GetExtension(filePath) != ".mp4")
         {
-            System.IO.File.Delete(filePath);
+            File.Delete(filePath);
             filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
         }
 
-        System.IO.File.Move(newFilePath, filePath, true);
+        File.Move(newFilePath, filePath, true);
+    }
+
+    // Check if video needs to be transcoded.
+    // NOTE that ALL (tested) iOS and some Mac devices need videos to be h264/aac
+    // Also check file size and container format
+    private bool NeedTranscode(FileInfo fileInfo)
+    {
+        var mediaInfo = FFProbe.Analyse(fileInfo.Name);
+        if (mediaInfo == null || mediaInfo.PrimaryAudioStream == null || mediaInfo.PrimaryVideoStream == null)
+        {
+            throw new Exception("Unable to analyze video metadata");
+        }
+
+        return fileInfo.Extension != ".mp4"
+        || mediaInfo.PrimaryVideoStream.CodecName != "h264"
+        || mediaInfo.PrimaryAudioStream.CodecName != "aac"
+        || fileInfo.Length > fileSizeLimit * 1000 * 1000;
     }
 }

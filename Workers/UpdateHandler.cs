@@ -9,7 +9,7 @@ namespace TelegramVideoBot.Workers;
 
 public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logger) : IUpdateHandler
 {
-    private readonly Dictionary<long, DownloadManager> downloadManagers = new();
+    private readonly Dictionary<long, DownloadManager> downloadManagers = [];
     private readonly string botName = config.TelegramBotName ?? "Frozen's Video Bot";
     private readonly ILogger<UpdateHandler> logger = logger;
     private readonly EnvironmentConfig config = config;
@@ -87,7 +87,7 @@ public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logg
         var replyBuilder = new StringBuilder();
         if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.Success))
         {
-            replyBuilder.AppendLine("Successfully queued the following videos:");
+            replyBuilder.AppendLine("Queueing the following videos:");
             replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.Success).Select(pair => $"`{pair.Key}`"));
         }
 
