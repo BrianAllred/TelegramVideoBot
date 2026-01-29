@@ -11,7 +11,7 @@ public class YtDlp
         {
             var updateStartInfo = new ProcessStartInfo("python3")
             {
-                Arguments = $"-m pip install --force-reinstall --break-system-packages git+https://github.com/yt-dlp/yt-dlp.git@{config.YtDlpUpdateBranch}",
+                Arguments = $"-m pip install --force-reinstall --break-system-packages \"yt-dlp[default] @ git+https://github.com/yt-dlp/yt-dlp.git@{config.YtDlpUpdateBranch}\"",
                 RedirectStandardError = true,
                 RedirectStandardOutput = true
             };
