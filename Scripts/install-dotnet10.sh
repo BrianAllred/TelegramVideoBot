@@ -22,4 +22,4 @@ rm packages-microsoft-prod.deb
 
 # Install
 apt-get update -y
-apt-get install -y python3-pip git aspnetcore-runtime-8.0
+apt-get install -y python3-pip git aspnetcore-runtime-10.0
