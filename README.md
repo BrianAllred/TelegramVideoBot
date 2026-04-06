@@ -4,6 +4,8 @@
 
 Telegram bot that facilitates downloading videos from various websites and services in order to more easily to distribute them. This bot is mostly intended for shorter videos (for example, TikTok and Twitter). Due to public Telegram API limits, videos bigger than 50MB have to be transcoded to 50MB or less. This means long videos will take a long time to process and will be of (potentially greatly) reduced quality. This can be avoided by providing a private API server base URL.
 
+Optionally, S3-compatible storage (AWS S3, Garage, MinIO, Backblaze B2, etc.) can be configured so users can retrieve the original, untranscoded video. When a video is transcoded, the bot attaches a "Get original" button to the sent video. Pressing it uploads the original file to S3 and sends back a time-limited presigned download URL.
+
 Uses YT-DLP and FFMpeg under the hood. Supports hardware acceleration, but it will fall back to software transcoding.
 
 A dependency has been added on [Deno](https://deno.com/) (or similar EJS) as per the [YT-DLP documentation](https://github.com/yt-dlp/yt-dlp/wiki/EJS). The Telegram Video Bot Docker image handles this dependency automatically.
@@ -21,6 +23,19 @@ A dependency has been added on [Deno](https://deno.com/) (or similar EJS) as per
 - `FILE_SIZE_LIMIT`: File size limit of videos in megabytes. Optional, defaults to 50.
 - `TZ`: Timezone. Optional, defaults to UTC.
 
+#### S3 Storage (optional)
+
+When configured, users can retrieve the original untranscoded video via a presigned download URL.
+
+- `S3_ENDPOINT`: S3-compatible endpoint URL (e.g. `https://s3.garage.example.com`). Optional, omit for AWS S3.
+- `S3_ACCESS_KEY`: S3 access key. Required to enable S3.
+- `S3_SECRET_KEY`: S3 secret key. Required to enable S3.
+- `S3_BUCKET`: Bucket name for video storage. Required to enable S3.
+- `S3_REGION`: Region. Optional, defaults to `us-east-1`.
+- `S3_FORCE_PATH_STYLE`: Force path-style addressing. Optional, defaults to `false`. Required for many S3-compatible services (Garage, MinIO, etc.).
+- `S3_DISABLE_PAYLOAD_SIGNING`: Disable chunked payload signing for uploads. Optional, defaults to `false`. Required for some S3-compatible services (Garage, MinIO, etc.) that don't support streaming signatures.
+- `S3_PRESIGN_EXPIRY_DAYS`: Presigned URL expiry in days. Optional, defaults to `3`.
+
 ### Docker Compose
 
 ```Docker
@@ -36,6 +51,14 @@ services:
       - TG_BOT_NAME=<bot name>
       - UPDATE_YTDLP_ON_START=true
       - DOWNLOAD_QUEUE_LIMIT=5
+      # Optional: S3 storage for original videos
+      # - S3_ENDPOINT=https://s3.garage.example.com
+      # - S3_ACCESS_KEY=<access key>
+      # - S3_SECRET_KEY=<secret key>
+      # - S3_BUCKET=videos
+      # - S3_FORCE_PATH_STYLE=true
+      # - S3_DISABLE_PAYLOAD_SIGNING=true
+      # - S3_PRESIGN_EXPIRY_DAYS=3
     deploy:
       resources:
         reservations:

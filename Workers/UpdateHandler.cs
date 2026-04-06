@@ -3,19 +3,27 @@ using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TelegramVideoBot.Services;
 using TelegramVideoBot.Utilities;
 
 namespace TelegramVideoBot.Workers;
 
-public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logger) : IUpdateHandler
+public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogger<UpdateHandler> logger) : IUpdateHandler
 {
     private readonly Dictionary<long, DownloadManager> downloadManagers = [];
     private readonly string botName = config.TelegramBotName ?? "Frozen's Video Bot";
     private readonly ILogger<UpdateHandler> logger = logger;
     private readonly EnvironmentConfig config = config;
+    private readonly S3StorageService s3 = s3;
 
     public async Task HandleUpdateAsync(ITelegramBotClient client, Update update, CancellationToken cancellationToken = new())
     {
+        if (update.CallbackQuery is { } callbackQuery)
+        {
+            await HandleCallbackQuery(client, callbackQuery, cancellationToken);
+            return;
+        }
+
         if (update.Message is not { } message) return;
         if (message.Text is not { } messageText) return;
 
@@ -65,7 +73,7 @@ public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logg
 
         if (!downloadManagers.TryGetValue(userId, out var manager))
         {
-            manager = new(client, userId, config.DownloadQueueLimit, config.FileSizeLimit, logger);
+            manager = new(client, userId, config.DownloadQueueLimit, config.FileSizeLimit, s3, logger);
             downloadManagers.Add(userId, manager);
         }
 
@@ -149,6 +157,66 @@ public class UpdateHandler(EnvironmentConfig config, ILogger<UpdateHandler> logg
         catch (Exception ex)
         {
             logger.LogError(ex, ex.Message);
+        }
+    }
+
+    private async Task HandleCallbackQuery(ITelegramBotClient client, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+    {
+        if (callbackQuery.Data is not { } data) return;
+
+        var parts = data.Split(':', 2);
+        if (parts.Length != 2) return;
+
+        var action = parts[0];
+        var pendingId = parts[1];
+
+        if (action is not ("transcode" or "original")) return;
+
+        if (!DownloadManager.PendingTranscodeChoices.TryGetValue(pendingId, out var pending))
+        {
+            await client.AnswerCallbackQuery(callbackQuery.Id, text: "This choice is no longer available.", showAlert: true, cancellationToken: cancellationToken);
+            return;
+        }
+
+        if (callbackQuery.From.Id != pending.UserId)
+        {
+            await client.AnswerCallbackQuery(callbackQuery.Id, text: "Only the original requester can do this.", cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Remove the inline buttons immediately to prevent double-clicks
+        if (callbackQuery.Message is { } message)
+        {
+            try
+            {
+                await client.EditMessageReplyMarkup(message.Chat.Id, message.MessageId, replyMarkup: null, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to remove inline keyboard");
+            }
+        }
+
+        var isTranscode = action == "transcode";
+        await client.AnswerCallbackQuery(callbackQuery.Id, text: isTranscode ? "Transcoding..." : "Uploading original...", cancellationToken: cancellationToken);
+
+        try
+        {
+            if (!downloadManagers.TryGetValue(pending.UserId, out var manager))
+            {
+                manager = new(client, pending.UserId, config.DownloadQueueLimit, config.FileSizeLimit, s3, logger);
+                downloadManagers[pending.UserId] = manager;
+            }
+
+            await manager.HandleTranscodeChoice(pendingId, isTranscode);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to handle transcode choice");
+            if (callbackQuery.Message is { } msg)
+            {
+                await client.SendMessage(msg.Chat.Id, "Sorry, something went wrong processing your choice.", cancellationToken: cancellationToken);
+            }
         }
     }
 

@@ -17,6 +17,7 @@ internal class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSingleton(config);
         builder.Services.AddSingleton<YtDlp>();
+        builder.Services.AddSingleton<S3StorageService>();
         builder.Services.AddHttpClient("telegram_bot_client")
             .AddTypedClient<ITelegramBotClient>((httpClient, sp) =>
             {

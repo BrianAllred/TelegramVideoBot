@@ -8,11 +8,13 @@ using FFMpegCore.Exceptions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
+using TelegramVideoBot.Services;
 using static TelegramVideoBot.Utilities.Enums;
 
 namespace TelegramVideoBot.Workers;
 
-public class DownloadManager(ITelegramBotClient client, long userId, int queueLimit, int fileSizeLimit, ILogger logger)
+public class DownloadManager(ITelegramBotClient client, long userId, int queueLimit, int fileSizeLimit, S3StorageService s3, ILogger logger)
 {
     private readonly ConcurrentQueue<DownloadInfo> downloads = new();
     private readonly long userId = userId;
@@ -20,6 +22,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
     private readonly int queueLimit = queueLimit;
     private readonly ILogger logger = logger;
     private readonly int fileSizeLimit = fileSizeLimit;
+    private readonly S3StorageService s3 = s3;
 
     private bool downloading;
 
@@ -45,16 +48,22 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
             try
             {
                 downloading = true;
-                var filePath = Directory.GetFiles("./").Where(file => file.StartsWith($"./{userId}")).FirstOrDefault();
-                filePath = filePath?[2..] ?? "";
-                if (File.Exists(filePath))
-                    File.Delete(filePath);
+                foreach (var existingFile in Directory.GetFiles("./").Where(file => file.StartsWith($"./{userId}")))
+                {
+                    var path = existingFile[2..];
+                    // Don't delete files that have a pending transcode choice
+                    if (PendingTranscodeChoices.Values.Any(p => p.FilePath == path))
+                        continue;
+                    if (File.Exists(path))
+                        File.Delete(path);
+                }
 
+                var downloadId = Guid.NewGuid().ToString("N")[..8];
                 var downloadProcInfo = new ProcessStartInfo("yt-dlp")
                 {
                     // adding remote-components here as per https://github.com/yt-dlp/yt-dlp/wiki/EJS
                     // NOTE that this adds a dependency on deno or similar EJS runtime
-                    Arguments = $"-f \"bv*+ba/b\" -S \"filesize~50M\" --remote-components ejs:github -o {userId}.%(ext)s {download.VideoUrl}",
+                    Arguments = $"-f \"bv*+ba/b\" --remote-components ejs:github -o {userId}_{downloadId}.%(ext)s {download.VideoUrl}",
                     RedirectStandardError = true,
                     RedirectStandardOutput = true
                 };
@@ -90,9 +99,32 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                     continue;
                 }
 
-                filePath = Directory.GetFiles("./").Where(file => file.StartsWith($"./{userId}")).First()[2..];
+                var filePath = Directory.GetFiles("./").First(file => file.StartsWith($"./{userId}_{downloadId}"))[2..];
 
                 var videoFileInfo = new FileInfo(filePath);
+
+                if (NeedTranscode(videoFileInfo) && s3.IsEnabled)
+                {
+                    var pendingId = Guid.NewGuid().ToString("N")[..8];
+                    PendingTranscodeChoices[pendingId] = new PendingTranscode
+                    {
+                        FilePath = filePath,
+                        ChatId = download.ChatId,
+                        ReplyId = download.ReplyId,
+                        UserId = userId
+                    };
+
+                    var keyboard = new InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton.WithCallbackData("Transcode for Telegram", $"transcode:{pendingId}"),
+                            InlineKeyboardButton.WithCallbackData("Get original", $"original:{pendingId}")
+                        ]
+                    ]);
+
+                    await client.SendMessage(download.ChatId, "This video needs transcoding to send via Telegram\\.\n\nTranscoding will reduce quality, especially for large/long videos\\.\n\nWhat would you like to do?", parseMode: ParseMode.MarkdownV2, replyParameters: download.ReplyId, replyMarkup: keyboard);
+                    continue;
+                }
 
                 if (NeedTranscode(videoFileInfo))
                 {
@@ -101,19 +133,7 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
                     filePath = $"{Path.GetFileNameWithoutExtension(filePath)}.mp4";
                 }
 
-                using var videoStream = File.OpenRead(filePath);
-
-                if (videoStream == null)
-                {
-                    throw new Exception();
-                }
-                else
-                {
-                    var inputFile = InputFile.FromStream(videoStream);
-                    var analysis = await FFProbe.AnalyseAsync(filePath);
-                    await client.SendVideo(download.ChatId, inputFile, replyParameters: download.ReplyId, height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
-                    File.Delete(filePath);
-                }
+                await SendVideo(download.ChatId, download.ReplyId, filePath);
             }
             catch (Exception ex)
             {
@@ -128,6 +148,43 @@ public class DownloadManager(ITelegramBotClient client, long userId, int queueLi
             }
         }
     }
+
+    private async Task SendVideo(long chatId, int replyId, string filePath)
+    {
+        using var videoStream = File.OpenRead(filePath) ?? throw new Exception();
+        var inputFile = InputFile.FromStream(videoStream);
+        var analysis = await FFProbe.AnalyseAsync(filePath);
+        await client.SendVideo(chatId, inputFile, replyParameters: replyId, height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
+        File.Delete(filePath);
+    }
+
+    public async Task HandleTranscodeChoice(string pendingId, bool transcode)
+    {
+        if (!PendingTranscodeChoices.TryRemove(pendingId, out var pending))
+            throw new InvalidOperationException("Choice no longer available");
+
+        if (transcode)
+        {
+            await client.SendMessage(pending.ChatId, "Transcoding, please wait\\.", parseMode: ParseMode.MarkdownV2, replyParameters: pending.ReplyId);
+            TranscodeVideo(pending.FilePath);
+            var transcodedPath = $"{Path.GetFileNameWithoutExtension(pending.FilePath)}.mp4";
+            await SendVideo(pending.ChatId, pending.ReplyId, transcodedPath);
+        }
+        else
+        {
+            await client.SendMessage(pending.ChatId, "Uploading, please wait\\.", parseMode: ParseMode.MarkdownV2, replyParameters: pending.ReplyId);
+            var objectKey = $"{pending.UserId}/{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Path.GetFileName(pending.FilePath)}";
+            var presignedUrl = await s3.UploadAndGetPresignedUrl(pending.FilePath, objectKey);
+            var expiryDays = s3.PresignExpiryDays;
+            await client.SendMessage(
+                pending.ChatId,
+                $"Here's your original video. This link expires in {expiryDays} day{(expiryDays != 1 ? "s" : "")}:\n{presignedUrl}",
+                replyParameters: pending.ReplyId);
+            File.Delete(pending.FilePath);
+        }
+    }
+
+    public static readonly ConcurrentDictionary<string, PendingTranscode> PendingTranscodeChoices = new();
 
     // https://unix.stackexchange.com/questions/520597/how-to-reduce-the-size-of-a-video-to-a-target-size
     private void TranscodeVideo(string filePath)
