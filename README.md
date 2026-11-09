@@ -4,7 +4,9 @@
 
 Telegram bot that facilitates downloading videos from various websites and services in order to more easily to distribute them. This bot is mostly intended for shorter videos (for example, TikTok and Twitter). Due to public Telegram API limits, videos bigger than 50MB have to be transcoded to 50MB or less. This means long videos will take a long time to process and will be of (potentially greatly) reduced quality. This can be avoided by providing a private API server base URL.
 
-Optionally, S3-compatible storage (AWS S3, Garage, MinIO, Backblaze B2, etc.) can be configured so users can retrieve the original, untranscoded video. When a video is transcoded, the bot attaches a "Get original" button to the sent video. Pressing it uploads the original file to S3 and sends back a time-limited presigned download URL.
+Optionally, S3-compatible storage (AWS S3, Garage, MinIO, Backblaze B2, etc.) can be configured so users can retrieve the original, untranscoded video. When a video is transcoded, the bot attaches a "Get original" button to the sent video. Pressing it uploads the original file to S3 and sends a time-limited presigned download URL to the user in a private chat. The link is never posted in a group: if the user hasn't started a private chat with the bot yet, the bot asks them to start one and press the button again. Unanswered choices expire after an hour, and the original file is deleted.
+
+In groups, the bot's text replies (status, errors, help and the transcode prompt) are [ephemeral messages](https://core.telegram.org/bots/api#ephemeral-messages-and-commands) that only the requester can see. The video itself is still posted to the group. `/download` and `/help` are registered as ephemeral group commands, so they are hidden from other members. Without admin rights, the bot can only send an ephemeral reply within 15 seconds of an ephemeral command. Later messages fall back to normal group messages, so make the bot a group admin to keep every text reply ephemeral.
 
 Uses YT-DLP and FFMpeg under the hood. Supports hardware acceleration, but it will fall back to software transcoding.
 

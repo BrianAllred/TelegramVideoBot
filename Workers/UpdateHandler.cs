@@ -1,5 +1,6 @@
 using System.Text;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -62,7 +63,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
 
         if (downloadUrls.Length == 0 || (downloadUrls.Length == 1 && downloadUrls[0].StartsWith("/download")))
         {
-            await client.SendMessage(message.Chat.Id, "No URL included in message.", replyParameters: message.MessageId, cancellationToken: cancellationToken);
+            await client.ReplyEphemeral(message, "No URL included in message.", logger, cancellationToken: cancellationToken);
             return;
         }
 
@@ -85,8 +86,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
             {
                 queueStatuses.Add(url, manager.QueueDownload(new DownloadInfo
                 {
-                    ChatId = message.Chat.Id,
-                    ReplyId = message.MessageId,
+                    Trigger = message,
                     VideoUrl = url
                 }));
             }
@@ -96,7 +96,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
         if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.Success))
         {
             replyBuilder.AppendLine("Queueing the following videos:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.Success).Select(pair => $"`{pair.Key}`"));
+            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.Success).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
         }
 
         replyBuilder.AppendLine();
@@ -104,7 +104,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
         if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.InvalidUrl))
         {
             replyBuilder.AppendLine("The following video URLs are invalid:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.InvalidUrl).Select(pair => $"`{pair.Key}`"));
+            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.InvalidUrl).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
         }
 
         replyBuilder.AppendLine();
@@ -112,7 +112,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
         if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.QueueFull))
         {
             replyBuilder.AppendLine("The following video URLs weren't queued due to a full queue:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.QueueFull).Select(pair => $"`{pair.Key}`"));
+            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.QueueFull).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
         }
 
         replyBuilder.AppendLine();
@@ -120,10 +120,10 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
         if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.UnknownError))
         {
             replyBuilder.AppendLine("The following video URLs weren't queued due to an unknown error:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.UnknownError).Select(pair => $"`{pair.Key}`"));
+            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.UnknownError).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
         }
 
-        await client.SendMessage(message.Chat.Id, replyBuilder.ToString(), replyParameters: message.MessageId, parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+        await client.ReplyEphemeral(message, replyBuilder.ToString(), logger, ParseMode.MarkdownV2, cancellationToken: cancellationToken);
     }
 
     private async Task HandleHelp(ITelegramBotClient client, Message message, CancellationToken cancellationToken = new())
@@ -141,7 +141,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
 
         try
         {
-            await client.SendMessage(message.Chat.Id, replyBuilder.ToString(), parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+            await client.ReplyEphemeral(message, replyBuilder.ToString(), logger, ParseMode.MarkdownV2, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -152,7 +152,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
 
         try
         {
-            await client.SendMessage(message.Chat.Id, replyBuilder.ToString(), cancellationToken: cancellationToken);
+            await client.ReplyEphemeral(message, replyBuilder.ToString(), logger, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -172,52 +172,72 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
 
         if (action is not ("transcode" or "original")) return;
 
+        Task Answer(string? text = null, bool showAlert = false) => client.AnswerCallbackQuery(callbackQuery.Id, text, showAlert, cancellationToken: cancellationToken);
+        const string choiceGone = "This choice is no longer available.";
+
         if (!DownloadManager.PendingTranscodeChoices.TryGetValue(pendingId, out var pending))
         {
-            await client.AnswerCallbackQuery(callbackQuery.Id, text: "This choice is no longer available.", showAlert: true, cancellationToken: cancellationToken);
+            await Answer(choiceGone, true);
             return;
         }
 
-        if (callbackQuery.From.Id != pending.UserId)
+        var userId = pending.Trigger.SenderUserId();
+        if (callbackQuery.From.Id != userId)
         {
-            await client.AnswerCallbackQuery(callbackQuery.Id, text: "Only the original requester can do this.", cancellationToken: cancellationToken);
+            await Answer("Only the original requester can do this.");
             return;
-        }
-
-        // Remove the inline buttons immediately to prevent double-clicks
-        if (callbackQuery.Message is { } message)
-        {
-            try
-            {
-                await client.EditMessageReplyMarkup(message.Chat.Id, message.MessageId, replyMarkup: null, cancellationToken: cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to remove inline keyboard");
-            }
         }
 
         var isTranscode = action == "transcode";
-        await client.AnswerCallbackQuery(callbackQuery.Id, text: isTranscode ? "Transcoding..." : "Uploading original...", cancellationToken: cancellationToken);
-
-        try
+        if (!isTranscode)
         {
-            if (!downloadManagers.TryGetValue(pending.UserId, out var manager))
+            // The link only goes out privately, and bots can't message users who never started a chat with them.
+            // Check before taking the choice, so the user can start a chat and press the button again.
+            try
             {
-                manager = new(client, pending.UserId, config.DownloadQueueLimit, config.FileSizeLimit, s3, logger);
-                downloadManagers[pending.UserId] = manager;
+                await client.SendChatAction(userId, ChatAction.UploadDocument, cancellationToken: cancellationToken);
             }
-
-            await manager.HandleTranscodeChoice(pendingId, isTranscode);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to handle transcode choice");
-            if (callbackQuery.Message is { } msg)
+            catch (ApiRequestException ex) when (ex.ErrorCode is 400 or 403)
             {
-                await client.SendMessage(msg.Chat.Id, "Sorry, something went wrong processing your choice.", cancellationToken: cancellationToken);
+                logger.LogInformation("Can't message user {UserId} privately ({Error})", userId, ex.Message);
+                await Answer("I can't message you privately yet. Open a private chat with me, press Start, then press \"Get original\" again.", true);
+                return;
             }
         }
+
+        // Taking the choice stops the expiry from deleting the file while it's in use, and makes a double click a no-op.
+        if (!DownloadManager.PendingTranscodeChoices.TryRemove(pendingId, out _))
+        {
+            await Answer(choiceGone, true);
+            return;
+        }
+
+        await Answer();
+
+        // Swap the buttons for a status.
+        if (callbackQuery.Message is { } prompt)
+        {
+            try
+            {
+                var status = isTranscode ? "Transcoding, please wait." : "Uploading the original video. I'll send you the link in a private chat.";
+                if (prompt.EphemeralMessageId is { } ephemeralId)
+                    await client.EditEphemeralMessageText(prompt.Chat.Id, userId, ephemeralId, status, cancellationToken: cancellationToken);
+                else
+                    await client.EditMessageText(prompt.Chat.Id, prompt.MessageId, status, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to update the transcode prompt");
+            }
+        }
+
+        if (!downloadManagers.TryGetValue(userId, out var manager))
+        {
+            manager = new(client, userId, config.DownloadQueueLimit, config.FileSizeLimit, s3, logger);
+            downloadManagers[userId] = manager;
+        }
+
+        manager.HandleTranscodeChoice(pending, isTranscode);
     }
 
     public async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)

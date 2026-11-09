@@ -6,9 +6,9 @@ namespace TelegramVideoBot.Abstract;
 public abstract class ReceiverServiceBase<TUpdateHandler> : IReceiverService
     where TUpdateHandler : IUpdateHandler
 {
-    private readonly ITelegramBotClient _botClient;
+    protected readonly ITelegramBotClient _botClient;
     private readonly IUpdateHandler _updateHandlers;
-    private readonly ILogger<ReceiverServiceBase<TUpdateHandler>> _logger;
+    protected readonly ILogger<ReceiverServiceBase<TUpdateHandler>> _logger;
 
     internal ReceiverServiceBase(
         ITelegramBotClient botClient,
@@ -25,7 +25,7 @@ public abstract class ReceiverServiceBase<TUpdateHandler> : IReceiverService
     /// </summary>
     /// <param name="stoppingToken"></param>
     /// <returns></returns>
-    public async Task ReceiveAsync(CancellationToken stoppingToken)
+    public virtual async Task ReceiveAsync(CancellationToken stoppingToken)
     {
         // ToDo: we can inject ReceiverOptions through IOptions container
         var receiverOptions = new ReceiverOptions()

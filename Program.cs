@@ -25,13 +25,15 @@ internal class Program
                 return new TelegramBotClient(options, httpClient);
             });
 
-        builder.Services.AddScoped<UpdateHandler>();
+        // Singleton so per-user download queues survive polling restarts.
+        builder.Services.AddSingleton<UpdateHandler>();
         builder.Services.AddScoped<ReceiverService>();
         builder.Services.AddHostedService<PollingService>();
 
         var app = builder.Build();
 
         app.Services.GetRequiredService<YtDlp>();
+        DownloadManager.DeleteLeftoverFiles();
 
         app.UseHttpsRedirection();
 
