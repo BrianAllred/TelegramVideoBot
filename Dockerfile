@@ -10,7 +10,7 @@ WORKDIR /app
 COPY --from=build /app .
 COPY ./Scripts/install-dotnet10.sh .
 RUN bash install-dotnet10.sh
-RUN python3 -m pip install --force-reinstall --break-system-packages "yt-dlp[default] @ git+https://github.com/yt-dlp/yt-dlp.git@release"
+RUN python3 -m pip install --force-reinstall --break-system-packages "yt-dlp[default]"
 ADD https://deno.land/install.sh install-deno.sh
 RUN apt-get update && apt-get install --no-install-recommends -y unzip
 RUN bash install-deno.sh -y
