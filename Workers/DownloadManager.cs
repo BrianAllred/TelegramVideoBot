@@ -157,7 +157,8 @@ public class DownloadManager
         using var videoStream = File.OpenRead(filePath);
         var inputFile = InputFile.FromStream(videoStream);
         var analysis = await FFProbe.AnalyseAsync(filePath);
-        await client.SendVideo(trigger.Chat.Id, inputFile, replyParameters: trigger.NormalReply(), messageThreadId: trigger.TopicId(), height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
+        var caption = trigger.Chat.Type is ChatType.Group or ChatType.Supergroup && trigger.From is { } sender ? $"From {sender.MentionHtml()}" : null;
+        await client.SendVideo(trigger.Chat.Id, inputFile, caption, ParseMode.Html, replyParameters: trigger.NormalReply(), messageThreadId: trigger.TopicId(), height: analysis.PrimaryVideoStream!.Height, width: analysis.PrimaryVideoStream!.Width);
     }
 
     /// <summary>

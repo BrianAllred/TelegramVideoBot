@@ -17,6 +17,10 @@ public static class Extensions
     // A message that isn't a reply lands in a forum's General topic unless it names its topic.
     public static int? TopicId(this Message message) => message.IsTopicMessage ? message.MessageThreadId : null;
 
+    // Tags the user by @username, or by a mention link when they have no username.
+    public static string MentionHtml(this User user) =>
+        user.Username is { } username ? $"@{username}" : $"<a href=\"tg://user?id={user.Id}\">{System.Net.WebUtility.HtmlEncode(user.FirstName)}</a>";
+
     // Inside MarkdownV2 code spans, only ` and \ need escaping.
     public static string MarkdownV2Code(string text) => $"`{text.Replace(@"\", @"\\").Replace("`", @"\`")}`";
 
