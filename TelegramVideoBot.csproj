@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="FFMpegCore" Version="6.0.0" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.104.11" />
-    <PackageReference Include="Telegram.Bot" Version="22.10.3.3" />
+    <PackageReference Include="Telegram.Bot" Version="22.10.4" />
     <PackageReference Include="GitVersion.MsBuild" Version="6.8.2">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
