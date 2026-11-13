@@ -63,7 +63,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
 
         if (downloadUrls.Length == 0 || (downloadUrls.Length == 1 && downloadUrls[0].StartsWith("/download")))
         {
-            await client.ReplyEphemeral(message, "No URL included in message.", logger, cancellationToken: cancellationToken);
+            await client.ReplyPrivately(message, "No URL included in message.", logger, cancellationToken: cancellationToken);
             return;
         }
 
@@ -92,38 +92,22 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
             }
         }
 
-        var replyBuilder = new StringBuilder();
-        if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.Success))
+        string Section(Enums.DownloadQueueStatus status, string heading)
         {
-            replyBuilder.AppendLine("Queueing the following videos:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.Success).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
+            var urls = queueStatuses.Where(pair => pair.Value == status).Select(pair => Extensions.MarkdownV2Code(pair.Key)).ToList();
+            return urls.Count == 0 ? "" : $"{heading}\n{string.Join('\n', urls)}";
         }
 
-        replyBuilder.AppendLine();
-
-        if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.InvalidUrl))
+        var queued = Section(Enums.DownloadQueueStatus.Success, "Queueing the following videos:");
+        var errors = string.Join("\n\n", new[]
         {
-            replyBuilder.AppendLine("The following video URLs are invalid:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.InvalidUrl).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
-        }
+            Section(Enums.DownloadQueueStatus.InvalidUrl, "The following video URLs are invalid:"),
+            Section(Enums.DownloadQueueStatus.QueueFull, "The following video URLs weren't queued due to a full queue:"),
+            Section(Enums.DownloadQueueStatus.UnknownError, "The following video URLs weren't queued due to an unknown error:")
+        }.Where(section => section != ""));
 
-        replyBuilder.AppendLine();
-
-        if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.QueueFull))
-        {
-            replyBuilder.AppendLine("The following video URLs weren't queued due to a full queue:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.QueueFull).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
-        }
-
-        replyBuilder.AppendLine();
-
-        if (queueStatuses.Values.Any(status => status == Enums.DownloadQueueStatus.UnknownError))
-        {
-            replyBuilder.AppendLine("The following video URLs weren't queued due to an unknown error:");
-            replyBuilder.AppendJoin('\n', queueStatuses.Where(pair => pair.Value == Enums.DownloadQueueStatus.UnknownError).Select(pair => Extensions.MarkdownV2Code(pair.Key)));
-        }
-
-        await client.ReplyEphemeral(message, replyBuilder.ToString(), logger, ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+        if (queued != "") await client.ReplyPrivately(message, queued, logger, ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+        if (errors != "") await client.ReplyPrivately(message, errors, logger, ParseMode.MarkdownV2, cancellationToken: cancellationToken);
     }
 
     private async Task HandleHelp(ITelegramBotClient client, Message message, CancellationToken cancellationToken = new())
@@ -141,7 +125,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
 
         try
         {
-            await client.ReplyEphemeral(message, replyBuilder.ToString(), logger, ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+            await client.ReplyPrivately(message, replyBuilder.ToString(), logger, ParseMode.MarkdownV2, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -152,7 +136,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
 
         try
         {
-            await client.ReplyEphemeral(message, replyBuilder.ToString(), logger, cancellationToken: cancellationToken);
+            await client.ReplyPrivately(message, replyBuilder.ToString(), logger, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {

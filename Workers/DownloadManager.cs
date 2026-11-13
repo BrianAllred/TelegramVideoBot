@@ -100,7 +100,7 @@ public class DownloadManager
             {
                 var replyBuilder = new StringBuilder("Failed to find video, are you sure this website/format is supported?\n\n");
                 replyBuilder.AppendLine("Please check the list of supported sites [here](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)\\.");
-                await client.ReplyEphemeral(trigger, replyBuilder.ToString(), logger, ParseMode.MarkdownV2);
+                await client.ReplyPrivately(trigger, replyBuilder.ToString(), logger, ParseMode.MarkdownV2);
                 return;
             }
 
@@ -126,13 +126,13 @@ public class DownloadManager
                     ]
                 ]);
 
-                await client.ReplyEphemeral(trigger, "This video needs transcoding to send via Telegram\\.\n\nTranscoding will reduce quality, especially for large/long videos\\.\n\nWhat would you like to do?", logger, ParseMode.MarkdownV2, keyboard);
+                await client.ReplyPrivately(trigger, "This video needs transcoding to send via Telegram\\.\n\nTranscoding will reduce quality, especially for large/long videos\\.\n\nWhat would you like to do?", logger, ParseMode.MarkdownV2, keyboard);
                 return;
             }
 
             if (needTranscode)
             {
-                await client.ReplyEphemeral(trigger, $"Video {MarkdownV2Code(download.VideoUrl)} must be transcoded, please wait\\.", logger, ParseMode.MarkdownV2);
+                await client.ReplyPrivately(trigger, $"Video {MarkdownV2Code(download.VideoUrl)} must be transcoded, please wait\\.", logger, ParseMode.MarkdownV2);
                 filePath = await TranscodeVideo(filePath);
             }
 
@@ -199,7 +199,7 @@ public class DownloadManager
     {
         try
         {
-            await client.ReplyEphemeral(trigger, text, logger, parseMode);
+            await client.ReplyPrivately(trigger, text, logger, parseMode);
         }
         catch (Exception ex)
         {
