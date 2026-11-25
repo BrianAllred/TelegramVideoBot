@@ -43,6 +43,8 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
             return;
         }
 
+        if (message.Chat.Type != ChatType.Private) return;
+
         await HandleDownload(client, message, cancellationToken);
     }
 
