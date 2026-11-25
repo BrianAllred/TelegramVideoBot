@@ -22,4 +22,4 @@ jobs:
         run: dotnet restore
 
       - name: Build dotnet release
-        run: dotnet publish -c Release
+        run: dotnet publish TelegramVideoBot.csproj -c Release

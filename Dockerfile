@@ -3,7 +3,7 @@ WORKDIR /src
 COPY TelegramVideoBot.csproj .
 RUN dotnet restore
 COPY . .
-RUN dotnet publish -c Release -o /app --self-contained false
+RUN dotnet publish TelegramVideoBot.csproj -c Release -o /app --self-contained false
 
 FROM linuxserver/ffmpeg AS final
 WORKDIR /app
