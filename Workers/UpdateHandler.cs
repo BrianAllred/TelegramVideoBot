@@ -16,6 +16,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
     private readonly ILogger<UpdateHandler> logger = logger;
     private readonly EnvironmentConfig config = config;
     private readonly S3StorageService s3 = s3;
+    private string? botUsername;
 
     public async Task HandleUpdateAsync(ITelegramBotClient client, Update update, CancellationToken cancellationToken = new())
     {
@@ -31,15 +32,18 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
         var splitMessage = messageText.Split(Array.Empty<char>(), StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (splitMessage.Length < 1) return;
 
-        if (splitMessage[0].StartsWith("/download"))
-        {
-            await HandleDownload(client, message, cancellationToken);
-            return;
-        }
-
         if (splitMessage[0].StartsWith('/'))
         {
-            await HandleHelp(client, message, cancellationToken);
+            // In groups, "/command@OtherBot" is addressed to another bot.
+            var command = splitMessage[0].Split('@', 2);
+            if (command.Length == 2)
+            {
+                botUsername ??= (await client.GetMe(cancellationToken)).Username;
+                if (!string.Equals(command[1], botUsername, StringComparison.OrdinalIgnoreCase)) return;
+            }
+
+            if (command[0] == "/download") await HandleDownload(client, message, cancellationToken);
+            else await HandleHelp(client, message, cancellationToken);
             return;
         }
 
@@ -57,7 +61,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
     private async Task HandleDownload(ITelegramBotClient client, Message message, CancellationToken cancellationToken = new())
     {
         var userId = message.SenderUserId();
-        if (userId == 0) return;
+        if (userId <= 0) return;
 
         if (message.Text is not { } messageText) return;
 
@@ -123,7 +127,7 @@ public class UpdateHandler(EnvironmentConfig config, S3StorageService s3, ILogge
         replyBuilder.AppendLine();
         replyBuilder.AppendLine("To get started, send a message starting with `/download` followed by a URL to a video, and I'll do my best\\!");
         replyBuilder.AppendLine();
-        replyBuilder.AppendLine("\\(I also work without the `/download` command in case you want to use a video app's share feature to send me a video URL directly\\!\\)");
+        replyBuilder.AppendLine("\\(In a private chat with me, I also work without the `/download` command in case you want to use a video app's share feature to send me a video URL directly\\!\\)");
 
         try
         {
